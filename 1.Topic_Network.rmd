@@ -1,0 +1,450 @@
+---
+title: "Untitled"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r, echo = F}
+rm(list = ls())
+Ruta <- "C:/Users/jzea/Google Drive/Laboral 2017/DNP/Regalías/" 
+setwd(paste0(Ruta, "datos_procesados"))
+
+# Cargar las librerías
+library(dplyr)
+library(tm)
+library(stringr)
+#library(devtools)
+#install_github("dgrtwo/widyr")
+library(widyr)
+library(tidytext)
+```
+
+```{r, echo = F}
+# Módulo de identificación de proyectos aprobados
+df_identifOCAD <- readRDS("df_identifOCAD.rds" )
+names(df_identifOCAD) <- gsub(" ", "_", names(df_identifOCAD) )
+#prueba <- df_identifOCAD$"NOMBRE_DEL_PROYECTO"
+#prueba <- iconv(prueba, "UTF8")
+#prueba <- iconv(prueba, to='ASCII//TRANSLIT')
+indice_nomerroneo <- which(nchar(df_identifOCAD$NOMBRE_DEL_PROYECTO) == max(nchar(df_identifOCAD$NOMBRE_DEL_PROYECTO)))
+
+# problema con nombre
+```
+
+
+# Análisis del título del proyecto
+
+```{r}
+table(df_identifOCAD$"NOMBRE_DEL_PROYECTO")
+#df_identifOCAD$"NOMBRE_DEL_PROYECTO" <- iconv(df_identifOCAD$"NOMBRE DEL #PROYECTO", to = "latin1")
+```
+
+
+
+```{r}
+rm_words <- function(x, stopwords){
+gsub(paste0("//b(",paste(stopwords, collapse="|"),")//b"), "", x)
+  }
+
+which(df_identifOCAD$BPIN == 2016005500008)
+df_identifOCAD$NOMBRE_DEL_PROYECTO[10180] <- "Alcantarillado Sanitario"
+
+Nombre_Proyecto <- tolower(df_identifOCAD$"NOMBRE_DEL_PROYECTO")
+Nombre_Proyecto <- rm_words(df_identifOCAD$NOMBRE_DEL_PROYECTO, stopwords("spanish"))
+df_identifOCAD$Nombre_Proyecto <- Nombre_Proyecto
+```
+
+Las palabras más frecuentes son: 
+
+# Primera palabra de los títulos
+
+```{r}
+firstword_nomproyec <- word(df_identifOCAD$"NOMBRE_DEL_PROYECTO", 1)
+unique_firstword_nomproyec <- unique(firstword_nomproyec)
+
+```
+
+# Relación del texto con el listado de las primeras palabras
+
+# Realizar un análisis de que tan relacionadas están en las palabras (en cada títiulo)
+
+```{r}
+df_titulo <- subset(df_identifOCAD,select = c(BPIN, Nombre_Proyecto))
+
+# Excluir Nombres geográficos
+nom_geo <- gsub(" DPTO", "", df_identifOCAD$RECURSOS_PERTENECIENTES_A)
+nom_geo <- tolower(nom_geo)
+nom_geo <-  gsub("arauca ", "arauca", nom_geo)
+nom_geo <- unlist(strsplit(nom_geo,  " "))
+nom_geo <- nom_geo[!(nom_geo %in% stopwords("es"))]
+nom_geo <- unique(nom_geo)
+#prue <- gsub(paste0("//b(",paste(nom_geo, collapse="|"),")//b"), "", df_titulo$Nombre_Proyecto)
+
+rm_words <- function(x, stopwords){
+  gsub(paste0("\\b(",paste(stopwords, collapse="|"),")\\b"), "", x)
+  }
+
+Nombre_Proyecto_edit <- df_titulo$Nombre_Proyecto
+Nombre_Proyecto_edit <- tolower(Nombre_Proyecto_edit)
+Nombre_Proyecto_edit <- rm_words(Nombre_Proyecto_edit, stopwords("spanish"))
+
+Nombre_Proyecto_edit <- gsub("[[:punct:]]", "", Nombre_Proyecto_edit)
+Nombre_Proyecto_edit <-gsub("[[:digit:]]+", "", Nombre_Proyecto_edit)
+
+Nombre_Proyecto_edit <- rm_words(Nombre_Proyecto_edit, nom_geo[c(1:924)])
+Nombre_Proyecto_edit <- rm_words(Nombre_Proyecto_edit, nom_geo[c(926:1009)])
+
+remover <- c("amazonía","atlantico", "departamento", "orinoquía", "llano", "orinoquia","caribe", "oriente", "centro", "municipios", "municipio", "isla", "occidente", "cra", "cll","av",
+             "caqueta", "mitú", "carrera", "calle", "k", "a", "cl", "cr", "i", "ii","ie",
+             "dos", "b", "tres", "pr", "c", "m", "sahagún", "s", "d", "ml",
+             "túquerres", "dpto", "kra", "tibú", "valledupar", "iii","belén",
+             "chiriguaná", "orocué", "sampués", "acacías", "l", "quibdó", "simití",
+             "yaguará", "kr", "ta", "distrito", "martín", "agustín", "gaitán", "yondó",
+             "lópez","propio", "jorge", "maría", "años", "quindio", "colosó")   
+Nombre_Proyecto_edit <- rm_words(Nombre_Proyecto_edit, remover)
+
+Nombre_Proyecto_edit <- strsplit(Nombre_Proyecto_edit, " ")
+
+
+# Eliminar duplicados y espacios
+CleanSpacesNSeparate <- function(x){
+  unlist(strsplit(x," "))[unlist(strsplit(x," ")) != ""]
+}
+
+RemoveDuplicated <- function(x){
+ x[!duplicated(x)] 
+}
+
+Colapsar <- function(x){
+ paste(x, collapse = " ")
+}
+
+Nombre_Proyecto_edit <- lapply(Nombre_Proyecto_edit, FUN = CleanSpacesNSeparate)
+Nombre_Proyecto_edit <- lapply(Nombre_Proyecto_edit, FUN = RemoveDuplicated)
+#Nombre_Proyecto_edit <- lapply(Nombre_Proyecto_edit, FUN = Colapsar)
+#Nombre_Proyecto_edit <- unlist(Nombre_Proyecto_edit)
+
+
+# Corrector ortográfico
+library(hunspell)
+dir <- "C:/Users/jzea/Google Drive/Laboral 2017/DNP/Regalías/"
+
+setwd(paste0(dir, "Diccionario/Colombia"))
+esp <- dictionary(paste0(dir, "Diccionario/Colombia/", "es_CO.dic"))
+
+correct <- hunspell_check(Nombre_Proyecto_edit[[9]], dict = esp)
+correct
+Nombre_Proyecto_edit[[9]][!correct]
+Nombre_Proyecto_edit[[9]]
+table(correct)
+hunspell_suggest(Nombre_Proyecto_edit[[9]][!correct], dict = esp)
+df_titulo$Nombre_Proyecto_edit <- Nombre_Proyecto_edit
+
+
+
+#Nombre_Proyecto_edit <- lapply(as.list(Nombre_Proyecto_edit), CleanSpacesNSeparate)
+
+```
+
+
+```{r}
+#Añadir palabras diccionario
+setwd("C:/Users/jzea/Google Drive/Laboral 2017/DNP/Regalías/datos")
+dir()
+library(readxl)
+DIVIPOLA <- read_excel("DivisionPoliticoAdministrativaColombia.XLS")
+names(DIVIPOLA) <- gsub("\n", "", names(DIVIPOLA) )
+names(DIVIPOLA) <- gsub(" ", "", names(DIVIPOLA) )
+nombres_entidades <- c(DIVIPOLA$NombredelDepartamento, DIVIPOLA$NombredeMunicipiosyCorregimientosDepartamentales)
+nombres_entidades <- c(DIVIPOLA$NombredeMunicipiosyCorregimientosDepartamentales,
+                       DIVIPOLA$NombredelDepartamento)
+
+nombres_entidades <- unique(nombres_entidades)
+```
+
+
+# Lemtizador
+
+```{r}
+#setwd("C:/Users/jzea/Google Drive/Laboral 2017/DNP/Regalías/lemmatizer")
+#lemamatizer <- read.table("lemmatization-es.txt")
+#lemamatizer$V1 <- iconv(lemamatizer$V1, from="UTF-8", to="LATIN1") 
+#lemamatizer$V2 <- iconv(lemamatizer$V2, from="UTF-8", to="LATIN1")
+
+#lemmatizer_function <- function(x, lemmatizer_root, lemmatizer_word){
+#  x <- ifelse(is.na(match(x, lemmatizer_word)), x,  
+#              lemmatizer_root[match(x, lemmatizer_word)]) 
+#x
+#  }
+
+
+#  x <- ifelse(is.na(match(c("estudios","carros"), lemamatizer$V2)), x,  
+              #lemamatizer$V1[match(c("estudios","carros"), lemamatizer$V2)]) 
+
+#unlist(strsplit(Nombre_Proyecto2[10]," "))[unlist(strsplit(Nombre_Proyecto2[10]," ")) != ""]
+
+#CleanSpacesNSeparate <- function(x){
+#  unlist(strsplit(x," "))[unlist(strsplit(x," ")) != ""]
+#}
+
+#Nombre_Proyecto_edit <- lapply(as.list(Nombre_Proyecto_edit), CleanSpacesNSeparate)
+
+#Nombre_Proyecto_editLema <- lapply(Nombre_Proyecto_edit, lemmatizer_function, lemamatizer$V1, lemamatizer$V2)
+
+#colapsar <- function(x) {
+ # paste(x, collapse = "")
+#  }
+
+
+```
+
+```{r}
+gc(reset = T)
+
+PalabrasXProyecto <- df_titulo %>% mutate(NroProyecto = 1:nrow(df_titulo)) %>%
+  unnest_tokens(Palabras, Nombre_Proyecto_edit)
+
+# count words co-occuring within sections
+pares_palabras <- PalabrasXProyecto %>%
+  pairwise_count(Palabras, NroProyecto, sort = TRUE)
+pares_palabras <- arrange(pares_palabras, -n)
+
+# Dejando solo las primeras palabras
+# Pensarla bien
+pares_palabras2 <- pares_palabras[pares_palabras$item1 %in% unique_firstword_nomproyec,] 
+c3 = data.frame(t(apply(pares_palabras2[,1:2], 1, function(x) sort(x))))
+pares_palabras3 <- pares_palabras2[!duplicated(c3), ]
+
+cuenta_palabras <- PalabrasXProyecto %>%
+  group_by(Palabras) %>% summarise(n = n()) %>% mutate(Porc = 100 * n / sum(n)) %>%
+  arrange(-n) %>% mutate(FrecAcum = cumsum(Porc))
+
+# 9155 todas las palabras, 105 palabras en la primera posición
+
+# Consulta de cuantas veces aparecen las primeras palabras
+con_frecPrimPal <- cuenta_palabras[cuenta_palabras$Palabras %in% unique_firstword_nomproyec,]
+
+# Todas las correlaciones
+PalabrasCor <- PalabrasXProyecto %>%
+  group_by(Palabras) %>%
+  filter(n() >= 20) %>%
+  pairwise_cor(Palabras, NroProyecto, sort = TRUE)
+
+PalabrasCor2 <- PalabrasCor[PalabrasCor$item1 %in% unique_firstword_nomproyec,] 
+PalabrasCor2 <- arrange(PalabrasCor2, item1, -correlation)
+
+consulta <- PalabrasCor2 %>% group_by(item1) %>% summarize(max = max(correlation))
+table(PalabrasCor2$correlation > 0.15)
+# Dejar palabras que sean frecuentes como primera palabra
+
+
+# Los gráficos rrestringidos pero lo demas dejarlo completo
+library(ggraph)
+library(igraph)
+X11()
+PalabrasCor2 %>%
+  filter(correlation > .15) %>%
+  graph_from_data_frame() %>%
+  ggraph(layout = "fr") +
+  geom_edge_link(aes(edge_alpha = correlation), show.legend = FALSE) +
+  geom_node_point(color = 1:128, size = 5) +
+  geom_node_text(aes(label = name), repel = TRUE) +
+  theme_void()
+
+
+
+# Guardar matriz
+
+edge <- data.frame(source = as.character(pares_palabras3$item1),
+                   target = as.character(pares_palabras3$item2),
+                    weight =  pares_palabras3$n)
+edge$source <- as.character(edge$source)
+edge$target <- as.character(edge$target)
+
+
+
+node <- data.frame(id = cuenta_palabras$Palabras,
+                   label = cuenta_palabras$Palabras,
+                   weight = cuenta_palabras$n)
+
+node$id <- as.character(node$id)
+node$label <- as.character(node$label)
+dim(node)
+
+
+
+
+# Tasa interno de retorno
+# Poblacion grupos edad
+# sisben
+
+
+write.csv(node, "node.csv", row.names = F)
+write.csv(edge, "edge.csv", row.names = F)
+
+
+m_pares_palabras <-  xtabs( n ~  item1 + item2, pares_palabras2)
+diag(m_pares_palabras) <- 0
+
+library(statnet)
+red <- as.network(x = m_pares_palabras, # the network object
+                   directed = TRUE, # specify whether the network is directed
+                   loops = FALSE, # do we allow self ties (should not allow them)
+                   matrix.type = "adjacency" # the type of input
+)
+
+
+#size <- round(rnorm(num_nodes,100,10))
+#set.vertex.attribute(net3,"Size",size)
+
+#set.edge.value(red,"Weight",edge_values)
+
+summary.network(red,print.adj = FALSE)
+X11()
+plot.network(red, 
+             vertex.col = "purple", #just one color
+             displaylabels = F)
+
+
+
+  
+
+word_cors <- titulo_Xpalabra %>%
+  group_by(Palabras) %>%
+  filter(n() >= 20) %>%
+  pairwise_cor(Palabras, NroProyecto, sort = TRUE)
+
+
+# Ejercicio con listado de las primeras palabras
+
+g <- graph.data.frame(pares_palabras3)             
+plot(g)
+
+# buscar analisis de gragros, teoríad e grafos (conductancia)
+tokensPrimerasPalbras <- titulo_Xpalabra[titulo_Xpalabra$Palabras %in% unique_firstword_nomproyec,]
+
+word_cors2 <- tokensPrimerasPalbras %>%
+  group_by(Palabras) %>%
+    pairwise_cor(Palabras, NroProyecto, sort = TRUE)
+
+
+X11()
+word_cors2 %>%
+ filter(correlation > .1) %>%
+  graph_from_data_frame() %>%
+  ggraph(layout = "fr") +
+  geom_edge_link(aes(edge_alpha = correlation), show.legend = FALSE) +
+  geom_node_point(color = "lightblue", size = 5) +
+  geom_node_text(aes(label = name), repel = TRUE) + theme_void()
+
+# bUSCAR LOS QUE APARECEN EN LA PRIMERA PALABRA
+
+```
+
+```{r}
+library(ggraph)
+library(igraph)
+set.seed(2016)
+X11()
+word_cors %>%
+  filter(correlation > .15) %>%
+  graph_from_data_frame() %>%
+  ggraph(layout = "fr") +
+  geom_edge_link(aes(edge_alpha = correlation), show.legend = FALSE) +
+  geom_node_point(color = "lightblue", size = 5) +
+  geom_node_text(aes(label = name), repel = TRUE) + theme_void()
+```
+
+
+
+
+Se revisa la cantidad de veces que aparece cada proyecto (globalmente, por región, por año)
+
+```{r}
+frec_palabra <- as.data.frame(table(firstword_nomproyec))
+frec_palabra <- arrange(frec_palabra, -Freq)
+frec_palabra$Consecutivo <- 1:nrow(frec_palabra)
+```
+
+
+
+
+```{r}
+prueba <- df_identifOCAD[grep("const*", df_identifOCAD$"NOMBRE_DEL_PROYECTO"),]
+# Consultar cuantos hay de estudios de construcción
+prueba2 <- word(df_identifOCAD$"NOMBRE_DEL_PROYECTO", 1)
+prueba2 <- as.data.frame(table(prueba2))
+library(xlsx)
+write.xlsx(pares_palabras3, "pares_palabras3.xlsx")
+
+
+
+names(df_identifOCAD)[12] <- "NOMBRE_DEL_PROYECTO" 
+datos_prueba <- df_identifOCAD[,c(1, 12)] 
+stopwords <- as.character(stopwords("spanish"))
+ datos_prueba$NOMBRE_DEL_PROYECTO <- gsub(paste0("//b(",paste(stopwords, collapse="|"),")//b"), "", datos_prueba$NOMBRE_DEL_PROYECTO )
+ 
+
+prueba_token <- datos_prueba %>%
+  unnest_tokens(bigram, NOMBRE_DEL_PROYECTO, token = "ngrams", n = 2)
+
+conteo_token <- prueba_token %>%
+  count(bigram, sort = TRUE)
+
+dim(conteo_token)
+write.csv(conteo_token)
+
+prueba_token3 <- datos_prueba %>%
+  unnest_tokens(bigram, NOMBRE_DEL_PROYECTO, token = "ngrams", n = 3)
+
+
+# Extraer las dos primeras
+conteo_token3 <- prueba_token3 %>%
+  count(bigram, sort = TRUE)
+
+# Extraer la primera palabra
+palabrasInicial <- word(datos_prueba$NOMBRE_DEL_PROYECTO,
+                       start = 1L, end = 1)
+
+palabrasInicial
+
+datos_prueba$palabrasInicial <- palabrasInicial
+
+datos_primeraspalabras <- as.data.frame(table(datos_prueba$palabrasInicial))
+
+# Buscar en cada titulo de proyecto la ocurrencia de las comibnmaciones
+# de a dos de la primera palabra
+
+
+
+
+
+
+# Usar expresión regular
+library(stringr)
+palabrasInicio <- word(datos_prueba$NOMBRE_DEL_PROYECTO,
+                       start = 1L, end = 2)
+
+datos_prueba$palabrasInicio <- palabrasInicio
+
+prueba_token2ini <- datos_prueba %>%
+  unnest_tokens(bigram, palabrasInicio, token = "ngrams", n = 2)
+
+
+# Extraer las dos primeras
+conteo_token2ini <- prueba_token2ini %>%
+  count(bigram, sort = TRUE)
+
+
+```
+
+
+```{r}
+wordcloud(d$names, d$freq,rot.per=0,color="red")
+
+```
+
