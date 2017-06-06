@@ -1,3 +1,23 @@
+
+utf8ToLatin1 <- function(x){
+  y <- iconv(x, "latin1", "ASCII", "byte")    
+  y <- gsub("<c3><a3><c2><a1>", "á", y)
+  y <- gsub("<c3><a3><c2><a9>", "é", y)
+  y <- gsub("<c3><a3><c2><ad>", "í", y)
+  y <- gsub("<c3><a3><c2><b3>", "ó", y)
+  y <- gsub("<c3><a3><c2><ba>", "ú", y)
+  y <- gsub("<c3><a3><c2><b1>", "ñ", y)
+  y <- gsub("<c3><a3><c2><bc>", "ü", y)
+  y <- gsub("<c3><83><c2><a1>", "Á", y)
+  y <- gsub("<c3><83><c2><a9>", "É", y)
+  y <- gsub("<c3><83><c2><ad>", "Í", y)
+  y <- gsub("<c3><83><c2><b3>", "Ó", y)
+  y <- gsub("<c3><83><c2><ba>", "Ú", y)
+  y <- gsub("<c3><83><c2><b1>", "Ñ", y)
+  y <- gsub("<c3><83><c2><bc>", "Ü", y)
+}
+
+
 rm_words <- function(x, stopwords){
   gsub(paste0("//b(",paste(stopwords, collapse="|"),")//b"), "", x)
 }
