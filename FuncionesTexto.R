@@ -54,3 +54,7 @@ LimpiarEspacios<- function(x){
 Duplicados<- function(x){
   x[!duplicated(x)]
 }
+
+
+
+

@@ -84,7 +84,8 @@ df_titulo4$NOMBREPROYECTO_EDITADO <- NOMBREPROYECTO4
 Ruta <- "C:/Users/jzea/Google Drive/Laboral 2017/DNP/Regalías/" 
 setwd(paste0(Ruta, "/", "resultados_parciales"))
 saveRDS(df_titulo4, "df_titulo5.rds")
-write.table(df_titulo4, "df_titulo5.csv", sep = "\t")
+write.table(df_titulo4, "df_titulo5.csv", sep = "\t", row.names = F,
+            fileEncoding = "UTF-8")
 
 
 
